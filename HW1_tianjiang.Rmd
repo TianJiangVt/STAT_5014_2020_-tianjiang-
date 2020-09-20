@@ -1,0 +1,80 @@
+---
+title: "Homework 1"
+author: "Tian Jiang"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#tinytex::install_tinytex()
+```
+
+# Problem 2
+
+
+### Part A
+
+
+My objectives are
+
+*   Concepts and basic mechanism of Git
+*   Making fancy reports
+*   Making friends
+
+
+### Part B
+ 
+
+\begin{eqnarray}
+f(x|\beta) &=& \frac{1}{\beta}e^{-\frac{x}{\beta}}\\
+f(x|\alpha,\beta) &=&  \frac{\beta\alpha^\beta}{x^{\beta+1}}\\
+f(x|a,b) &=& \frac{1}{b-a}
+\end{eqnarray}
+
+# Problem 3
+
+To the document created in Problem 2, add a summary of the steps in performing Reproducible Research in numbered list format. 
+\newline
+Next to each item, comment on any challenges you see in performing the step.  
+
+1. Keeping record of elements that lead to the current result and     ensuring them to be automated.
+    + Challenge: Sometimes manual data manipulation is unavoidable.
+2. Saving raw data including random seeds.
+    + Challenge: Raw data may change with time.
+3. Making analysis process easy to understand and public.
+    + Challenge: Different people may have different opinions on                    analysing methods.
+    
+
+
+# Problem 4
+
+
+
+```{r}
+#install.packages("ggplot2")
+library(ggplot2)
+ggplot(data=mpg) +
+  geom_point(mapping=aes(x=displ,y=hwy))
+```
+```{r}
+hist(mpg$displ)
+```
+
+
+
+# Problem 5
+Please knit this document to PDF (name should be `HW2_pid`) and push to GitHub:
+
+In the R Terminal, type:  
+\begin{enumerate}
+    \item git pull  
+    \item git add HW1\_pid.[pR]*  (NOTE: this should add two files)  
+    \item git commit -m "final HW1 submission"   
+    \item git push
+\end{enumerate}
+
+A more detailed description is on the course website under *Submitting Homework*.
+
+## Reminder on where to find Git help:  
+Read through the Git help Chapters 1 and 2. <https://git-scm.com/book/en/v2>
