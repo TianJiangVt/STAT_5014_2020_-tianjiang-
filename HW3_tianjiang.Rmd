@@ -1,0 +1,102 @@
+---
+title: "HW3_tianjiang"
+author: "Tian Jiang"
+date: "9/26/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rstan)
+library(dplyr)
+library(knitr)
+library(reshape2)
+library(microbenchmark)
+library(ggplot2)
+```
+
+# P5
+```{r}
+b0<-readRDS("/Users/mac/Downloads/HW3_data.rds")
+p5 <- function(df) {
+  table<-df %>% group_by(Observer)%>% summarize(MeanDev1 = mean(dev1),MeanDev2 = mean(dev2),SdDev1=sd(dev1),SdDev2=sd(dev2),Correlation=cor(dev1, dev2, method = c("pearson")))
+  print(kable(table))
+  b <- melt(b0,id.vars=1)
+  b$Observer<-factor(b$Observer)
+  print(ggplot(b, aes(x=Observer, y=value, fill=variable)) + 
+    geom_boxplot())
+  print(ggplot(b, aes(x=Observer, y=value, fill=variable)) + 
+    geom_violin())
+  print(ggplot(b0, aes(x=dev1,y=dev2)) + geom_point() + facet_wrap(Observer~.))
+}	
+p5(b0)
+```
+Analysis: The means of two variables don't vary much among different groups. Also Dev1 and Dev2 have slightly negative correlations and the correlation coefficient of different groups are very close. Boxplots support these conclusions, too. And there's no outlier through out the data except dev1 of group 4. Also from violin plots we see the range of dev2 is always larger than that of dev1 in every group. And frequencies of different values spread more evenly for dev2.
+Comprehensively we conclude that data of different groups are distributed very similarly.
+However, as the last plot shows, my conclusion is totally wrong. The lesson is that we should have an viewable and intuitive understanding of the data in the first place so that we hace a basic idea of the relationship between variables, i.e do the job from the very basic step. Data visualisation is very important! Also only looking at a small number of statistics might result in wrong understanding. We should refer to more kinds of analysis results and think about the situation from different perspectives.
+
+# P6
+```{r}
+solution<-0.3413*(2*pi)^0.5
+j<-c() 
+Probability <- function(start_value, end_value, eval_points) 
+{N = eval_points# Number of evaluation points                                      
+step = (end_value - start_value) / (N - 1)  # Step size
+g<-seq(start_value,end_value,step)
+Kdens<-exp(-g^2/2)
+probability = sum(Kdens * step)  # Approximate the integral of the PDF
+print("width")
+print(step)
+print("result")
+print(probability)}
+for (i in 2:15)
+{re<-Probability(0,1,10^i)
+  if (abs(re-solution)<10^(-6))
+  {j<-c(j,re)}}
+print("j")
+print(j)
+```
+
+# P7
+```{r}
+g <- function(x) {3^x -sin(x)+cos(5*x)}
+gPrime <- function(x) {3^x*log(3)-cos(x)-5*sin(5*x)}
+guess <- (-3)
+tolerance <- .00001
+l<-c()
+root <- function(g, gPrime, guess, tolerance) {
+  x = guess
+  l<-c(l,x)
+  print(x)
+  while ((abs(g(x))) > tolerance) {
+    x = x - g(x)/gPrime(x)
+    print(x)
+    l<-c(l,x)}
+  print(x)
+  l<-c(l,x)
+  plot(l,type="b")}
+root(g, gPrime, guess, tolerance)
+```
+
+# P8
+```{r}
+set.seed(1)
+X <- cbind(rep(1,100),rep.int(1:10,time=10))
+beta <- c(4,5)
+y <- X%*%beta + rnorm(100)
+ybar<-mean(y)
+sum=0
+calsum<-function(x){
+for (i in 1:100)
+{sum<-sum+(y[i]-ybar)^2}
+ sum}
+calmat<-function(o)
+{a<-(t(as.vector(y)))%*%((diag(100))-1/100*matrix(1, 100, 100))%*%(as.vector(y))
+a}
+print("Results")
+calsum(x)
+calmat(x)[1,1]
+times<-microbenchmark(calsum(x),calmat(x),times=100)
+autoplot(times)
+```
+
