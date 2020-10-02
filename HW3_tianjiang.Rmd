@@ -32,30 +32,35 @@ p5 <- function(df) {
 p5(b0)
 ```
 Analysis: The means of two variables don't vary much among different groups. Also Dev1 and Dev2 have slightly negative correlations and the correlation coefficient of different groups are very close. Boxplots support these conclusions, too. And there's no outlier through out the data except dev1 of group 4. Also from violin plots we see the range of dev2 is always larger than that of dev1 in every group. And frequencies of different values spread more evenly for dev2.
+
 Comprehensively we conclude that data of different groups are distributed very similarly.
+
 However, as the last plot shows, my conclusion is totally wrong. The lesson is that we should have an viewable and intuitive understanding of the data in the first place so that we hace a basic idea of the relationship between variables, i.e do the job from the very basic step. Data visualisation is very important! Also only looking at a small number of statistics might result in wrong understanding. We should refer to more kinds of analysis results and think about the situation from different perspectives.
 
 # P6
 ```{r}
 solution<-0.3413*(2*pi)^0.5
 j<-c() 
-Probability <- function(start_value, end_value, eval_points) 
-{N = eval_points# Number of evaluation points                                      
-step = (end_value - start_value) / (N - 1)  # Step size
-g<-seq(start_value,end_value,step)
+Probability <- function(start_value, end_value, step) 
+{g<-seq(start_value,end_value,step)
 Kdens<-exp(-g^2/2)
 probability = sum(Kdens * step)  # Approximate the integral of the PDF
 print("width")
 print(step)
 print("result")
-print(probability)}
-for (i in 2:15)
-{re<-Probability(0,1,10^i)
-  if (abs(re-solution)<10^(-6))
-  {j<-c(j,re)}}
-print("j")
-print(j)
+print(probability)
+print("error")
+error<-abs(probability-solution)
+print(error)}
+for (i in 2:8)
+{re<-Probability(0,1,10^(-i))
+#if (abs(re-solution)<10^(-6))
+#{j<-c(j,re)}
+ }
+#print("j")
+#print(j)
 ```
+My R dies everytime I set the step less than 10^-8. So I'm sorry it can't generate a result with the error less than 10^(-6)
 
 # P7
 ```{r}
