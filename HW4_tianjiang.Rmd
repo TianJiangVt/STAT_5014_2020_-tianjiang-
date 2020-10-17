@@ -25,7 +25,9 @@ library(tidyr)
 
 Hello professor, I'm aware there are still many problems I need to modify and improve though I've spent the whole week on this homework. But I feel sorry to realize that I urgently have to move on to the next task.
 There are lines that my computer cannot run even after parallelization. So I didn't run them (I put them after #)
-Homework has a deadline but study has not. I might talk about this homework with classmates later when availible.
+Homework has a deadline but study has not. I might talk about this homework with classmates later when availible. 
+
+Thank you!
 
 # P2
 ```{r}
