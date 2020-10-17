@@ -1,0 +1,397 @@
+---
+title: "HW4_tianjiang"
+author: "Tian Jiang"
+date: "10/16/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(parallel)
+library(foreach)
+library(doParallel)
+library(downloader)
+library(stringr)
+library(remotes)
+library(fiftystater)
+library(ggplot2)
+library(fiftystater)
+library(mapproj)
+library(quantreg)
+library(quantmod)
+library(dplyr)
+library(tidyr)
+```
+
+# P2
+```{r}
+tolerance<-0.000001
+alpha<-0.0001
+set.seed(12506)
+theta <- as.matrix(c(1,2),nrow=2)
+X <- cbind(1,rep(1:10,10))
+h <- X%*%theta+rnorm(100,0,0.2)
+lm(h~0+X)#lm(h~X[,2]) same
+
+theta <- cbind(theta, theta-c(alpha/100*apply(X%*%theta-h,2,sum),alpha/100*apply(t(X%*%theta-h)%*%X[,2],2,sum)))
+i<-2
+while((abs(theta[1,i]-theta[1,i-1])>tolerance)&(abs(theta[2,i]-theta[2,i-1])>tolerance))
+{theta <- cbind(theta, theta[1,i-1]-c(alpha/100*apply(X%*%theta[,i-1]-h,2,sum),alpha/100*apply(t(X%*%theta[,i-1]-h)%*%X[,2],2,sum)))
+i<-(i+1)#already have this many pairs 
+}
+thetafinal<-{rbind(theta[1,i],theta[2,i])}
+thetafinal
+```
+# P3
+```{r}
+#peraperations
+theta <- as.matrix(c(1,2),nrow=2)
+X <- cbind(1,rep(1:10,10))
+h <- X%*%theta+rnorm(100,0,0.2)
+library(parallel)
+theta0<-seq(0.9696-1,0.9696+1, length=10000)
+theta1<-seq(2.0016-1,2.0016+1, length=10000)
+thetabegin<-as.matrix(rbind(theta0,theta1))
+cores<-detectCores()
+cl<-makeForkCluster(cores)
+registerDoParallel(cl)
+tolerance<-10^(-9)
+alpha<-10^(-7)
+#paralell
+listP3<-foreach(j=1:10000,.combine = rbind) %dopar% 
+{theta <- thetabegin[,j]
+
+theta <- cbind(theta, theta-c(alpha/100*apply(X%*%theta-h,2,sum),alpha/100*apply(t(X%*%theta-h)%*%X[,2],2,sum)))
+i<-2
+while((abs(theta[1,i]-theta[1,i-1])>tolerance)&(abs(theta[2,i]-theta[2,i-1])>tolerance)&i<5000000)
+{theta <- cbind(theta, theta[1,i-1]-c(alpha/100*apply(X%*%theta[,i-1]-h,2,sum),alpha/100*apply(t(X%*%theta[,i-1]-h)%*%X[,2],2,sum)))
+i<-(i+1)#already have this many pairs 
+}
+
+thetafinal<-{rbind(theta[1,i],theta[2,i])}
+c(i,thetafinal)
+}
+
+listP3.1<-as.data.frame(listP3)
+colnames(listP3.1)<-c('rounds','beta0','beta1')
+listP3.1
+print("mean")
+mean(listP3.1$rounds)
+print("stdev")
+sd(listP3.1$rounds)
+stopCluster(cl)
+```
+
+# P4
+I think he means finding the inverse of a matrix after factoring it is much faster.
+https://www.johndcook.com/blog/2010/01/19/dont-invert-that-matrix/
+http://home.cc.umanitoba.ca/~farhadi/Math2120/Inverse%20Using%20LU%20decomposition.pdf
+```{r}
+theta <- as.matrix(c(1,2),nrow=2)
+X <- cbind(1,rep(1:10,10))
+h <- X%*%theta+rnorm(100,0,0.2)
+betahat<-solve(t(X)%*%X)%*%(t(X))%*%h
+betahat
+```
+
+# P5
+## Part a
+```{r}
+set.seed(12456) 
+G <- matrix(sample(c(0,0.5,1),size=16000,replace=T),ncol=10)
+R <- cor(G) # R: 10 * 10 correlation matrix of G
+C <- kronecker(R, diag(1600)) # C is a 16000 * 16000 block diagonal matrix
+id <- sample(1:16000,size=932,replace=F)
+q <- sample(c(0,0.5,1),size=15068,replace=T) # vector of length 15068
+A <- C[id, -id] # matrix of dimension 932 * 15068
+B <- C[-id, -id] # matrix of dimension 15068 * 15068
+p <- runif(932,0,1)
+r <- runif(15068,0,1)
+C<-NULL #save some memory space
+object.size(A)
+object.size(B)
+
+#The following line is too long to run
+#system.time(p+A%*%(solve(B))%*%(q-r))
+```
+## Part b
+I modified the calculating order because I think multiplying a matrix with a vector is faster than multiplying matrixes.
+Sorry professor I didn't run the code below because my computer can't bear it even after paralellzation.
+```{r}
+cores<-detectCores()-1
+cl<-makeForkCluster(cores)
+registerDoParallel(cl)
+
+matprod.par <- function(cl, A, B){
+if (ncol(A) != nrow(B)) stop("Matrices do not conforme")
+idx   <- splitIndices(nrow(A), length(cl))
+Alist <- lapply(idx, function(ii) A[ii,,drop=FALSE])
+ans   <- clusterApply(cl, Alist, get("%*%"), B)
+do.call(rbind, ans)}
+
+#Initial order
+#step1<-matprod.par(cl, A, solve(B))
+#step2<-matprod.par(cl, step1, q-r)
+
+#modified order   Just 15068+932 lines 
+#Still too long to run on my computer
+#step1<-matprod.par(cl,solve(B),q-r)
+#step2<-matprod.par(cl,A, step1)
+
+stopCluster(cl)
+```
+
+# P6 Proportion of success in a vector
+## Part b
+```{r}
+set.seed(12345)
+#do 10 experiments, each is B(1,p) p for each trail is different
+P4b_data <- matrix(rbinom(10, 1, prob = (31:40)/100), nrow = 10, ncol = 10, byrow = FALSE)
+P4b_data 
+```
+## Part c
+```{r}
+A<-function(x) return(length(which(x==1))/10)
+apply(P4b_data,2,A)#column
+apply(P4b_data,1,A)#row
+```
+## Part d
+```{r}
+B<-function(x) return(rbinom(10, 1, prob = x))
+P4b_data <- matrix(B((21:40)/100), nrow = 10, ncol = 10, byrow = FALSE)
+P4b_data
+```
+
+# P7
+## Part a
+```{r}
+b0<-readRDS("/Users/mac/Documents/5014/HW3_data.rds")
+colnames(b0) <- c("Observer","x", "y")
+#plot(sort(b0$x), sort(b0$y), main="Scatterplot", 
+#     xlab="x", ylab="y", pch=19)
+C<-function(x) return(plot(b0$x, b0$y, main="Scatterplot", 
+                           xlab="x", ylab="y", pch=19))
+C(b0)
+```
+
+## Part b
+```{r}
+
+```
+
+# P8
+## Part a
+```{r}
+download("http://www.farinspace.com/wp-content/uploads/us_cities_and_states.zip",dest="us_cities_states.zip")
+unzip("us_cities_states.zip", exdir="./")
+library(data.table)
+states <- fread(input = "./us_cities_and_states/states.sql",skip = 23,sep = "'", sep2 = ",", header = F, select = c(2,4))
+colnames(states)<-c("fullname","states")
+cities <- fread(input = "us_cities_and_states/cities.sql",skip = 23,sep = "'", sep2 = ",", header = F, select = c(2,4))
+```
+
+## Part b
+```{r}
+states1<-{}
+NumCities<-{}
+for (j in 1:length(unique(cities$V4)))
+{states1<-rbind(states1,unique(cities$V4)[j])
+ NumCities<-rbind(NumCities,length(which(cities$V4==unique(cities$V4)[j])))}
+employ.data <- data.frame(states1,NumCities)
+colnames(employ.data)<-c("states","NumCities")
+total <- merge(states,employ.data,by="states")
+total
+```
+
+## Part c
+```{r}
+#count a alphabet in a string
+C<-function(string,letter) str_count(string, letter)
+C("asdasd","a")
+#count 26 alphabets in a string
+D<-function(string) 
+{d<-{}
+letters1<-as.matrix(letters)
+  for (i in 1:26)
+  {d<-rbind(d,str_count(string, letters1[i,1]))}
+  return(d)}
+D("asdasd")
+#Our task
+letter_count <- data.frame(matrix(NA,nrow=51, ncol=27))
+letter_count[,1]<-states$fullname
+for(i in 1:51){
+  letter_count[i,2:27]<-D(states$fullname[i])
+}
+letter_count
+```
+
+## Part d
+```{r}
+total$fullname<-tolower(total$fullname)
+total <- total[-c(8), ]
+p <- ggplot(total, aes(map_id = fullname)) + 
+  # map points to the fifty_states shape data
+  geom_map(aes(fill = NumCities), map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") +
+  theme(legend.position = "bottom", 
+        panel.background = element_blank())
+p
+```
+```{r}
+sum<-{}
+for (i in 1:51)
+{if (max(letter_count[i,2:27])>=3)
+    {sum<-rbind(sum,1)}
+ else
+    {sum<-rbind(sum,0)}}
+letter_count<-cbind(letter_count,sum)
+letter_count <- letter_count[-c(8), ]
+letter_count$X1<-tolower(letter_count$X1)
+p <- ggplot(letter_count, aes(map_id = X1)) + 
+  # map points to the fifty_states shape data
+  geom_map(aes(fill = sum), map = fifty_states) + 
+  expand_limits(x = fifty_states$long, y = fifty_states$lat) +
+  coord_map() +
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "") +
+  theme(legend.position = "bottom", 
+        panel.background = element_blank())
+p
+```
+
+# P9
+## Part a
+He wrote the wrong names of the variables in his for loop and I answered him.
+```{r}
+#1)fetch data from Yahoo
+#AAPL prices
+apple08 <- getSymbols('AAPL', auto.assign = FALSE, from = '2008-1-1', to = 
+                        "2008-12-31")[,6]
+#market proxy
+rm08<-getSymbols('^ixic', auto.assign = FALSE, from = '2008-1-1', to = 
+                   "2008-12-31")[,6]
+#log returns of AAPL and market
+logapple08<- na.omit(ROC(apple08)*100)
+logrm08<-na.omit(ROC(rm08)*100)
+#OLS for beta estimation
+beta_AAPL_08<-summary(lm(logapple08~logrm08))$coefficients[2,1]
+#create df from AAPL returns and market returns
+df08<-cbind(logapple08,logrm08)
+#set.seed(666)
+Boot=1000
+sd.boot=rep(0,Boot)
+for(i in 1:Boot){
+  # nonparametric bootstrap
+  bootdata=df08[sample(nrow(df08), size = 251, replace = TRUE),]
+  sd.boot[i]= coef(summary(lm(AAPL.Adjusted~IXIC.Adjusted, data = bootdata)))[2,2]
+  #print(summary(lm(logapple08~logrm08, data = bootdata)))
+}
+sd.boot
+```
+## Part b
+```{r}
+sensory <- read.delim("http://www2.isye.gatech.edu/~jeffwu/wuhamadabook/data/Sensory.dat")
+sensory
+#Tidyverse
+sensory<-sensory %>% separate(col = X, into = c("1","2","3","4","5","6"), sep = " ") %>% select(-Operator)
+sensory2<-sensory[-1,]
+for (i in 1:30)
+{if ((i %% 3)!=1)
+{for (j in 2:6)
+  sensory2[i,8-j]<- sensory2[i,8-j-1]
+sensory2[i,1]<-sensory2[i-1,1]
+}}
+colnames(sensory2) <- c("item","Operator1", "Operator2","Operator3","Operator4","Operator5")
+row.names(sensory2)<-c(1:30)
+sensory8<-as.data.frame(sensory2)
+t<-(sensory8)
+sensory8=matrix(unlist(t(t)), byrow=T,30,6)
+sensory8
+colnames(sensory8) <- c("item","Operator1", "Operator2","Operator3","Operator4","Operator5")
+class(sensory8) <- "numeric"
+df <- as_tibble(sensory8)    
+df
+```
+```{r}
+y<-rbind(t(t(df$Operator1)),t(t(df$Operator1)),t(t(df$Operator1)),t(t(df$Operator1)),t(t(df$Operator1)))
+operator<-rbind(t(t(rep(1,30))),t(t(rep(2,30))),t(t(rep(3,30))),t(t(rep(4,30))),t(t(rep(5,30))))
+data<-cbind(operator,y)
+data1<-as.data.frame(data)
+colnames(data1)<-cbind('operator','y')
+
+Boot=1000
+beta0.boot=rep(0,Boot)
+beta1.boot=rep(0,Boot)
+start_time <- Sys.time()
+for(i in 1:Boot){
+  # nonparametric bootstrap
+  bootdata<-data1%>% group_by(operator) %>% sample_n(20)#make sure the damples are balanced
+  beta0.boot[i]= coef(summary(lm(operator~y, data = bootdata)))[1,1]
+  beta1.boot[i]= coef(summary(lm(operator~y, data = bootdata)))[2,1]
+  #print(summary(lm(operator~y, data = bootdata)))
+}
+end_time <- Sys.time()
+end_time - start_time
+print("beta0.boot")
+print(beta0.boot)
+print("beta1.boot")
+print(beta1.boot)
+```
+## Part c
+```{r}
+cores<-detectCores()
+cl<-makeForkCluster(cores)
+registerDoParallel(cl)
+
+start_time <- Sys.time()
+result<-foreach(j=1:Boot,.combine = rbind) %dopar% {
+  bootdata<-data1%>% group_by(operator) %>% sample_n(20)
+  c(coef(summary(lm(operator~y, data = bootdata)))[1,1],coef(summary(lm(operator~y, data = bootdata)))[2,1])
+}
+end_time <- Sys.time()
+end_time - start_time
+
+result1<-as.data.frame(result)
+colnames(result1)<-c('beta0','beta1')
+result1
+stopCluster(cl)
+```
+
+# P10
+## Part a
+```{r}
+tolerance <- .00001
+g <- function(x) {3^x -sin(x)+cos(5*x)}
+gPrime <- function(x) {3^x*log(3)-cos(x)-5*sin(5*x)}
+start<-seq(-4,0,length.out=1000)
+df <- data.frame(start)
+df[] <- lapply(df, function(x) {
+  while ((abs(3^x -sin(x)+cos(5*x))) > tolerance) {
+    x = x - g(x)/gPrime(x)
+  }
+  return(x)
+  } )
+colnames(df)<-c('result')
+final<-cbind(start,df)
+final
+```
+## Part b
+Sorry professor I didn't run below because my computer dies every time I run it.
+```{r}
+#cores<-detectCores()
+#cl<-makeForkCluster(cores)
+#parLapply(cl,seq(-4,0,length.out=1000),function(expoent) {
+#  tolerance <- .00001
+#  while ((abs(3^expoent -sin(expoent)+cos(5*expoent))) > tolerance) {
+#    expoent = expoent - (3^expoent-sin(expoent)+cos(5*expoent))/(3^expoent*log(3)-cos(expoent)-5*sin(5*expoent))
+#  }
+#  return(expoent)
+#})
+#stopCluster(cl)
+```
+
