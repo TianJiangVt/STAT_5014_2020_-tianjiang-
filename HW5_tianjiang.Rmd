@@ -1,0 +1,105 @@
+---
+title: "HW5_tianjiang"
+author: "Tian Jiang"
+date: "10/30/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# P3
+How many data points were there in the complete dataset?
+```{r}
+df<-read.csv("/Users/mac/Documents/5014/Edstats_csv/EdStatsData.csv", header = TRUE, sep = ",")
+China<-df[df$Country.Name=='China',]
+UnitedStates<-df[df$Country.Name=='United States',]
+China1<-China[rowSums(is.na(China)) != 66, ]
+UnitedStates1<-UnitedStates[rowSums(is.na(UnitedStates)) != 66, ]
+China2<-China[seq(152,158,2),]
+UnitedStates2<-UnitedStates[seq(152,158,2),]
+library(dplyr)
+China3<-China2 %>% select_if(~all(!is.na(.)))
+China5<-China3 %>% rowwise() %>% mutate(mean = mean(c_across(X1970:X2010)))
+China6<-China5 %>% rowwise() %>% mutate(max = max(c_across(X1970:X2010)))
+China7<-China6 %>% rowwise() %>% mutate(min = min(c_across(X1970:X2010)))
+China8<-China7 %>% rowwise() %>% mutate(median = median(c_across(X1970:X2010)))
+summaryChina<-China8[,c(3,14:17)]
+summaryChina
+UnitedStates3<-UnitedStates2 %>% select_if(~all(!is.na(.)))
+UnitedStates5<-UnitedStates3 %>% rowwise() %>% mutate(mean = mean(c_across(X1970:X2010)))
+UnitedStates6<-UnitedStates5 %>% rowwise() %>% mutate(max = max(c_across(X1970:X2010)))
+UnitedStates7<-UnitedStates6 %>% rowwise() %>% mutate(min = min(c_across(X1970:X2010)))
+UnitedStates8<-UnitedStates7 %>% rowwise() %>% mutate(median = median(c_across(X1970:X2010)))
+summaryUnitedStates<-UnitedStates8[,c(3,14:17)]
+summaryUnitedStates
+```
+# P4
+```{r}
+China9<-China3[1:2,4:13]
+China10<-t(China9)
+colnames(China10)<-c('1519','2024')
+China11<-China10[2:10,]
+China12<-as.data.frame(China11)
+China12$`1519`<-as.numeric(China12$`1519`)
+China12$`2024`<-as.numeric(China12$`2024`)
+lmfit<-lm(China12$`2024`~China12$`1519`)
+summary(lmfit)
+
+par(mfrow=c(2,3))
+
+plot(fitted(lmfit),residuals(lmfit),xlab="Fitted",ylab="Residuals")
+abline(h=0)
+
+plot(x = fitted.values(lmfit), y = rstudent(lmfit))
+
+x <- model.matrix(lmfit)
+lev <- hat(x)
+sum(lev)
+plot(rstudent(lmfit),lev,xlab="Leverages",ylab="rstudent")
+abline(h=2*sum(lev)/9)
+
+qqnorm(residuals(lmfit), ylab="Residuals")
+qqline(residuals(lmfit))#?????????????????????????????????????????????different from ggplot     normal q or?
+
+plot(fitted(lmfit),China12$`2024`,xlab="Fitted",ylab="True")
+abline(coef = c(0,1))
+
+plot(cooks.distance(lmfit))
+abline(h=0.2)
+#layout matrix
+
+```
+# P5
+```{r}
+#install.packages("broom")
+library(broom)
+library(ggplot2)
+require(gridExtra)
+
+df <- augment(lmfit)
+
+p1<-ggplot(df, aes(x = .fitted, y = .resid)) + geom_hline(yintercept = 0, linetype=2, color="darkgrey") + geom_point()
+
+p2<-ggplot(df, aes(x = .fitted, y = .resid / .sigma * sqrt(1 - .hat))) +  geom_point()
+
+p3<-ggplot(df, aes(x =.hat, y = .resid / .sigma * sqrt(1 - .hat))) + geom_hline(yintercept = 2*sum(lev)/9, linetype=2, color="darkgrey") + geom_point()
+
+#?????????????
+p4<-ggplot(df,aes(sample=.resid))+geom_qq()
+p4<-p2+geom_abline()+xlab("Theoretical Quantiles")+ylab("Residuals")
+p4<-p2+ggtitle("Normal Q-Q")+theme_bw()
+p4
+
+p5<-lmfit %>% augment() %>% 
+  ggplot()  + 
+  geom_point(aes(.fitted, China12$`2024`)) + 
+  geom_smooth(aes(.fitted, China12$`2024`), method = "lm", se = FALSE, color = "lightgrey") + labs(x = "Actual", y = "Fitted") + 
+  theme_bw()
+
+p6<-ggplot(df, aes(seq_along(.cooksd), .cooksd)) +
+  geom_point()+geom_hline(yintercept = 0.2, linetype=2, color="darkgrey")
+
+grid.arrange(p1, p2, p3,p4,p5,p6)
+```
+
